@@ -13,27 +13,34 @@ class Song(object):
     def song_name(self):
         raise NotImplementedError
 
-    def create_sequences(self):
-        sequences = self.sequences()
-        for sequence in sequences:
-            composed_sequence = self.compose(sequences[sequence]['tones'], **sequences[sequence]['options'])
-            with open('%s_%s'%(self.song_name(), sequence), 'w') as f:
-                f.write('v2.0 raw\n')
-                f.write("\n".join(composed_sequence))
-
-    def compose(self, tones, **kwargs):
+    def __compose(self, tones, **kwargs):
         song = []
         seconds_per_time = kwargs['seconds_per_bar'] / kwargs['nblacks']
         samples_per_time = seconds_per_time * kwargs['frequency']
         for tone, tone_times in tones:
             samples = [tone] * int(samples_per_time * tone_times)
             nsamples = len(samples)
-            volume = self.volume(kwargs['top_volume'], nsamples)
+            volume = self.__volume(tone, kwargs['top_volume'], nsamples, vtype=kwargs.get('vtype', None))
             song.extend((sample_volume << 16) | TONE_FREQUENCY[sample] for sample, sample_volume in zip(samples, volume) )
         return [format(sample, 'x') for sample in song]
 
-    def volume(self, top_volume, nsamples):
-        # return [int(i * delta) for i in range(nsamples, -1, -1)] 
-        volume = [i**2 for i in range(nsamples, -1, -1)]
-        m = max(volume)
-        return [int(float(top_volume)*v/m) for v in volume]
+    def __volume(self, tone, top_volume, nsamples, vtype='quadratic'):
+        if tone == 'SILENCE':
+            volume = [0] * nsamples
+        else:
+            if vtype == 'quadratic':
+                base = [i**2 for i in range(nsamples, -1, -1)]
+                m = max(base)
+            else:
+                base = [i for i in range(nsamples, -1, -1)]
+                m = max(base)
+            volume = [int(float(top_volume)*v/m) for v in base]
+        return volume
+
+    def create_sequences(self):
+        sequences = self.sequences()
+        for sequence in sequences:
+            composed_sequence = self.__compose(sequences[sequence]['tones'], **sequences[sequence]['options'])
+            with open('%s_%s'%(self.song_name(), sequence), 'w') as f:
+                f.write('v2.0 raw\n')
+                f.write("\n".join(composed_sequence))

@@ -11,6 +11,7 @@ class OdeToJoy(Song):
         return {
             'right_hand': {
                 'options': {
+                    'vtype': 'linear',
                     'seconds_per_bar': 1.35, 
                     'frequency': 1200, 
                     'top_volume': 127.0,
